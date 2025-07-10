@@ -2,15 +2,20 @@ pipeline {
 
     agent {
         node {
-            label 'master'
+            label 'master' 
         }
     }
 
     options {
         buildDiscarder logRotator( 
-                    daysToKeepStr: '16', 
-                    numToKeepStr: '10'
-            )
+            daysToKeepStr: '16', 
+            numToKeepStr: '10'
+        )
+    }
+
+    environment {
+        APICTL_PATH = '/Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl'
+        PATH = "${APICL_PATH}:${env.PATH}"
     }
 
     stages {
@@ -25,20 +30,20 @@ pipeline {
         stage('Setup Environment for APICTL') {
             steps {
                 sh '''#!/bin/bash
-                #rm /var/lib/jenkins/workspace/gitconfig
-                #touch /var/lib/jenkins/workspace/gitconfig
-                apictl set --vcs-config-path /var/lib/jenkins/workspace/gitconfig
+                export PATH=/Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD:$PATH
 
-                envs=$(apictl get envs --format "{{.Name}}")
+                /Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl set --vcs-config-path /var/lib/jenkins/workspace/gitconfig
+
+                envs=$(/Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl get envs --format "{{.Name}}")
                 if [ -z "$envs" ]; 
                 then 
                     echo "No environment configured. Setting dev environment.."
-                    apictl add env dev --apim https://${APIM_DEV_HOST}:9443 
+                    /Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl add env dev --apim https://${APIM_DEV_HOST}:9443 
                 else
                     echo "Environments :"$envs
                     if [[ $envs != *"dev"* ]]; then
-                    echo "Dev environment is not configured. Setting dev environment.."
-                    apictl add env dev --apim https://${APIM_DEV_HOST}:9443 
+                        echo "Dev environment is not configured. Setting dev environment.."
+                        /Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl add env dev --apim https://${APIM_DEV_HOST}:9443 
                     fi
                 fi
                 '''
@@ -48,10 +53,11 @@ pipeline {
         stage('Build api bundles and upload') {
             steps {
                 sh '''#!/bin/bash
+                export PATH=/Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD:$PATH
 
-                apictl login dev -u admin -p admin -k
+                /Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl login dev -u admin -p admin -k
 
-                apis=$(apictl vcs status -e dev --format="{{ jsonPretty . }}" | jq -r '.API | .[] | .NickName')
+                apis=$(/Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl vcs status -e dev --format="{{ jsonPretty . }}" | jq -r '.API | .[] | .NickName')
                 mkdir -p upload
                 if [ -z "$apis" ]; 
                 then 
@@ -62,9 +68,8 @@ pipeline {
                     for i in "${apiArray[@]}"
                     do
                         echo "$i"
-                        apictl bundle -s $i -d upload
+                        /Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl bundle -s $i -d upload
 
-                        # get the artifact deploy version from the meta.yaml
                         versionFull=$(cat $i/meta.yaml)
                         versionId=(${versionFull//: / })
                         version=${versionId[1]}
