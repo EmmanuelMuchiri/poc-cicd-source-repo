@@ -14,7 +14,7 @@ pipeline {
     }
 
     environment {
-        APICTL_PATH = '/usr/local/bin' // adjust if apictl is in a different folder
+        APICTL_PATH = 'C:\Users\Lenovo\Downloads\apictl-4.2.6-windows-x64' // adjust if apictl is in a different folder
         PATH = "${APICTL_PATH}:${env.PATH}"
         APIM_HOST = "localhost" // change if your API Manager runs on a different host
         APIM_PORT = "9443"
