@@ -14,7 +14,7 @@ pipeline {
     }
 
     environment {
-        APICTL_PATH = '/Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl'
+        APICTL_PATH = '/usr/local/bin'
         PATH = "${APICL_PATH}:${env.PATH}"
     }
 
@@ -30,20 +30,20 @@ pipeline {
         stage('Setup Environment for APICTL') {
             steps {
                 sh '''#!/bin/bash
-                export PATH=/Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD:$PATH
+                export PATH=/usr/local/bin:$PATH
 
-                /Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl set --vcs-config-path /var/lib/jenkins/workspace/gitconfig
+                apictl set --vcs-config-path /var/lib/jenkins/workspace/gitconfig
 
-                envs=$(/Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl get envs --format "{{.Name}}")
+                envs=$(apictl get envs --format "{{.Name}}")
                 if [ -z "$envs" ]; 
                 then 
                     echo "No environment configured. Setting dev environment.."
-                    /Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl add env dev --apim https://${APIM_DEV_HOST}:9443 
+                    apictl add env dev --apim https://${APIM_DEV_HOST}:9443 
                 else
                     echo "Environments :"$envs
                     if [[ $envs != *"dev"* ]]; then
                         echo "Dev environment is not configured. Setting dev environment.."
-                        /Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl add env dev --apim https://${APIM_DEV_HOST}:9443 
+                        apictl add env dev --apim https://${APIM_DEV_HOST}:9443 
                     fi
                 fi
                 '''
@@ -53,11 +53,11 @@ pipeline {
         stage('Build api bundles and upload') {
             steps {
                 sh '''#!/bin/bash
-                export PATH=/Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD:$PATH
+                export PATH=/usr/local/bin:$PATH
 
-                /Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl login dev -u admin -p admin -k
+                apictl login dev -u admin -p admin -k
 
-                apis=$(/Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl vcs status -e dev --format="{{ jsonPretty . }}" | jq -r '.API | .[] | .NickName')
+                apis=$(apictl vcs status -e dev --format="{{ jsonPretty . }}" | jq -r '.API | .[] | .NickName')
                 mkdir -p upload
                 if [ -z "$apis" ]; 
                 then 
@@ -68,7 +68,7 @@ pipeline {
                     for i in "${apiArray[@]}"
                     do
                         echo "$i"
-                        /Users/emmanuelmuchiri/Documents/Kulana/CBG/CI_CD/apictl bundle -s $i -d upload
+                        apictl bundle -s $i -d upload
 
                         versionFull=$(cat $i/meta.yaml)
                         versionId=(${versionFull//: / })
