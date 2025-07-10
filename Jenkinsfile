@@ -14,50 +14,60 @@ pipeline {
     }
 
     environment {
-        APICTL_PATH = '/usr/local/bin'
-        PATH = "${APICL_PATH}:${env.PATH}"
+        APICTL_PATH = "${env.WORKSPACE}/apictl"
+        PATH = "${APICTL_PATH}:${env.PATH}"
+        APIM_HOST = "localhost" // change if your API Manager runs on a different host
+        APIM_PORT = "9443"
+        APIM_USER = "admin"
+        APIM_PASS = "admin"
     }
 
     stages {
-        
+
         stage('Preparation') {
-            steps{
+            steps {
                 git branch: "master",
                 url: 'https://github.com/EmmanuelMuchiri/poc-cicd-source-repo.git'
             }
         }
 
+        stage('Install APICTL CLI') {
+            steps {
+                sh '''
+                wget https://github.com/wso2/product-apim-tooling/releases/download/v4.2.6/apictl-linux-x64 -O apictl
+                chmod +x apictl
+                ./apictl version
+                '''
+            }
+        }
+
         stage('Setup Environment for APICTL') {
             steps {
-                sh '''#!/bin/bash
-                export PATH=/usr/local/bin:$PATH
+                sh '''
+                ./apictl set --vcs-config-path /var/lib/jenkins/workspace/gitconfig
 
-                apictl set --vcs-config-path /var/lib/jenkins/workspace/gitconfig
-
-                envs=$(apictl get envs --format "{{.Name}}")
+                envs=$(./apictl get envs --format "{{.Name}}")
                 if [ -z "$envs" ]; 
                 then 
                     echo "No environment configured. Setting dev environment.."
-                    apictl add env dev --apim https://${APIM_DEV_HOST}:9443 
+                    ./apictl add env dev --apim https://${APIM_HOST}:${APIM_PORT}
                 else
                     echo "Environments :"$envs
                     if [[ $envs != *"dev"* ]]; then
                         echo "Dev environment is not configured. Setting dev environment.."
-                        apictl add env dev --apim https://${APIM_DEV_HOST}:9443 
+                        ./apictl add env dev --apim https://${APIM_HOST}:${APIM_PORT}
                     fi
                 fi
                 '''
             }
         }
 
-        stage('Build api bundles and upload') {
+        stage('Build api bundles and deploy to local APIM') {
             steps {
-                sh '''#!/bin/bash
-                export PATH=/usr/local/bin:$PATH
+                sh '''
+                ./apictl login dev -u ${APIM_USER} -p ${APIM_PASS} -k
 
-                apictl login dev -u admin -p admin -k
-
-                apis=$(apictl vcs status -e dev --format="{{ jsonPretty . }}" | jq -r '.API | .[] | .NickName')
+                apis=$(./apictl vcs status -e dev --format="{{ jsonPretty . }}" | jq -r '.API | .[] | .NickName')
                 mkdir -p upload
                 if [ -z "$apis" ]; 
                 then 
@@ -67,28 +77,20 @@ pipeline {
                     apiArray=($apis)
                     for i in "${apiArray[@]}"
                     do
-                        echo "$i"
-                        apictl bundle -s $i -d upload
+                        echo "Building bundle for $i"
+                        ./apictl bundle -s $i -d upload
 
-                        versionFull=$(cat $i/meta.yaml)
-                        versionId=(${versionFull//: / })
-                        version=${versionId[1]}
-
-                        for file in upload/*; do
-                            echo "Uploading "$file
-                            curl -u ${ARTIFACTORY_USER}:${ARTIFACTORY_PWD} -X PUT https://${ARTIFACTORY_HOST}/artifactory/${ARTIFACTORY_REPO}/$i/$version/ -T $file
-                        done
-                        rm -rf upload
+                        echo "Deploying $i to local API Manager"
+                        ./apictl import api -f upload/$i -e dev -k
                     done
                 fi
-
                 '''
             }
         }
 
         stage('Update local repo') {
             steps {
-                sh '''#!/bin/bash
+                sh '''
                 idFull=$(cat vcs.yaml)
                 arrId=(${idFull//: / })
                 repoId=${arrId[1]}
@@ -104,5 +106,5 @@ repos:
                 '''
             }
         }
-    }   
+    }
 }
