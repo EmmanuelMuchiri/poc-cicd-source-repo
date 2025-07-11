@@ -41,7 +41,7 @@ paths:
     get:
       operationId: listPets
       parameters:
-      - description: How many items to return at one time (max 100) change number 1
+      - description: How many items to return at one time (max 100) change number 2
         format: int32
         in: query
         name: limit
