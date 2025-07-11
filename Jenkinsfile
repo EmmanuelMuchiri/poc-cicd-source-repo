@@ -33,5 +33,3 @@ pipeline {
         }
     }
 }
-
-docker cp "C:\Users\Lenovo\Downloads\apictl-4.4.1-linux-amd64.tar.gz" bold_galileo:/tmp/apictl-4.4.1-linux-amd64.tar.gz
