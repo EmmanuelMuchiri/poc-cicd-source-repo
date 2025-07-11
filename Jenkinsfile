@@ -2,7 +2,7 @@ pipeline {
     agent any
  
     environment {
-        APICTL_PATH = 'C:/Users/Lenovo/Downloads/apictl-4.2.6-windows-x64/apictl'
+        APICTL_PATH = 'C:\\Users\\Lenovo\\Downloads\\apictl-4.2.6-windows-x64\\apictl\\apictl.exe'
         APIM_ENV = 'dev'
         APIM_USER = 'admin'
         APIM_PASS = 'admin'
