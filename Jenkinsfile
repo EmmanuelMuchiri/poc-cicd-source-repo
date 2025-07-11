@@ -2,11 +2,18 @@ pipeline {
     agent any
 
     environment {
+        // Paths and credentials
         APICTL_PATH = '/usr/local/bin/apictl'
         APIM_ENV = 'dev'
         APIM_USER = 'admin'
         APIM_PASS = 'admin'
-        PATH = "/usr/local/bin:${env.PATH}" // Ensures /usr/local/bin is in PATH
+
+        // API Manager host details (replace with your actual host IP)
+        APIM_HOST = '192.168.1.74'
+        APIM_PORT = '9443'
+
+        // Ensure /usr/local/bin is in PATH
+        PATH = "/usr/local/bin:${env.PATH}"
     }
 
     stages {
@@ -14,14 +21,12 @@ pipeline {
         stage('Check Environment') {
             steps {
                 sh '''
-                echo "Printing PATH:"
+                echo "===== Printing PATH ====="
                 echo $PATH
-                echo "Checking apictl in PATH:"
+                echo "===== Checking apictl in PATH ====="
                 which apictl || echo "apictl not found in PATH"
-                echo "Listing /usr/local/bin:"
-                ls -l /usr/local/bin
-                echo "Checking apictl version:"
-                /usr/local/bin/apictl version || echo "apictl not executable"
+                echo "===== Checking apictl version ====="
+                apictl version || echo "apictl not executable"
                 '''
             }
         }
@@ -32,9 +37,22 @@ pipeline {
             }
         }
 
+        stage('Set APICTL Environment') {
+            steps {
+                sh """
+                echo "===== Setting APICTL environment ====="
+                ${APICTL_PATH} add env ${APIM_ENV} \\
+                    --apim https://${APIM_HOST}:${APIM_PORT} \\
+                    --token https://${APIM_HOST}:${APIM_PORT}/oauth2/token \\
+                    --insecure
+                """
+            }
+        }
+
         stage('Login to API Manager') {
             steps {
                 sh """
+                echo "===== Logging into API Manager ====="
                 ${APICTL_PATH} login ${APIM_ENV} -u ${APIM_USER} -p ${APIM_PASS} --insecure
                 """
             }
@@ -43,18 +61,24 @@ pipeline {
         stage('Deploy API') {
             steps {
                 sh """
-                ${APICTL_PATH} import-api -f your-exported-api-folder --environment ${APIM_ENV} --update --preserve-provider --skip-cleanup --insecure
+                echo "===== Deploying API ====="
+                ${APICTL_PATH} import api \\
+                    -f your-exported-api-folder \\
+                    --environment ${APIM_ENV} \\
+                    --update \\
+                    --preserve-provider \\
+                    --insecure
                 """
             }
         }
     }
 
     post {
-        failure {
-            echo "Pipeline failed. Check logs for details."
-        }
         success {
-            echo "Pipeline executed successfully."
+            echo "✅ Pipeline executed successfully."
+        }
+        failure {
+            echo "❌ Pipeline failed. Check logs for details."
         }
     }
 }
