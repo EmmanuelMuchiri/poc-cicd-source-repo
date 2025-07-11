@@ -9,6 +9,19 @@ pipeline {
     }
 
     stages {
+        stage('Check apictl path') {
+    steps {
+        sh '''
+        echo "Printing PATH:"
+        echo $PATH
+        echo "Checking apictl in PATH:"
+        which apictl || echo "apictl not found in PATH"
+        echo "Listing /usr/local/bin:"
+        ls -l /usr/local/bin
+        '''
+    }
+}
+
 
         stage('Clone Repository') {
             steps {
