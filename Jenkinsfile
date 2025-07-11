@@ -47,7 +47,7 @@ pipeline {
                 sh """
                 echo "===== Deploying API ====="
                 ${APICTL_PATH} import api \\
-                    -f poc-cicd-source-repo/PetstoreAPI \\
+                    -f PetstoreAPI \\
                     --environment ${APIM_ENV} \\
                     --update \\
                     --preserve-provider \\
