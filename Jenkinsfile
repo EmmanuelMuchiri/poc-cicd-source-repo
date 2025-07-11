@@ -8,10 +8,6 @@ pipeline {
         APIM_USER = 'admin'
         APIM_PASS = 'admin'
 
-        // API Manager host details (replace with your actual host IP)
-        APIM_HOST = '192.168.1.74'
-        APIM_PORT = '9443'
-
         // Ensure /usr/local/bin is in PATH
         PATH = "/usr/local/bin:${env.PATH}"
     }
@@ -34,18 +30,6 @@ pipeline {
         stage('Clone Repository') {
             steps {
                 git branch: 'master', url: 'https://github.com/EmmanuelMuchiri/poc-cicd-source-repo.git'
-            }
-        }
-
-        stage('Set APICTL Environment') {
-            steps {
-                sh """
-                echo "===== Setting APICTL environment ====="
-                ${APICTL_PATH} add env ${APIM_ENV} \\
-                    --apim https://${APIM_HOST}:${APIM_PORT} \\
-                    --token https://${APIM_HOST}:${APIM_PORT}/oauth2/token \\
-                    --insecure
-                """
             }
         }
 
