@@ -32,7 +32,7 @@ pipeline {
 
         stage('Clone Repository') {
             steps {
-                git branch: 'test_wso2_mi_ci_cd', url: 'https://github.com/EmmanuelMuchiri/poc-cicd-source-repo.git'
+                git branch: 'wso2_mi_test', url: 'https://github.com/EmmanuelMuchiri/dbg.git'
             }
         }
 
