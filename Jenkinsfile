@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven 3.9.10' // Match the name configured in Jenkins
+    }
+
     environment {
         // Paths and credentials
         MI_HOME = '/opt/wso2mi-4.2.0'                // Path to Micro Integrator installation
