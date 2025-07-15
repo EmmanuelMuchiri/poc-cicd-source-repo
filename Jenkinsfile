@@ -3,13 +3,13 @@ pipeline {
 
     environment {
         // Paths and credentials
-        APICTL_PATH = '/usr/local/bin/apictl'
-        APIM_ENV = 'dev'
-        APIM_USER = 'admin'
-        APIM_PASS = 'admin'
+        MI_HOME = '/opt/wso2mi-4.2.0'                // Path to Micro Integrator installation
+        CAR_DEPLOY_DIR = "${MI_HOME}/repository/deployment/server/carbonapps"
+        MI_START_SCRIPT = "${MI_HOME}/bin/micro-integrator.sh"
+        MI_STOP_SCRIPT = "${MI_HOME}/bin/micro-integrator.sh"
 
-        // Ensure /usr/local/bin is in PATH
-        PATH = "/usr/local/bin:${env.PATH}"
+        // Ensure required tools are in PATH
+        PATH = "/usr/local/bin:/usr/bin:/bin:${env.PATH}"
     }
 
     stages {
@@ -17,52 +17,81 @@ pipeline {
         stage('Check Environment') {
             steps {
                 sh '''
-                echo "===== Printing PATH ====="
-                echo $PATH
-                echo "===== Checking apictl in PATH ====="
-                which apictl || echo "apictl not found in PATH"
-                echo "===== Checking apictl version ====="
-                apictl version || echo "apictl not executable"
+                echo "===== Checking tools ====="
+                which mvn || echo "Maven not found!"
+                which zip || echo "zip not found!"
+                echo "JAVA_HOME=$JAVA_HOME"
+                java -version
                 '''
             }
         }
 
         stage('Clone Repository') {
             steps {
-                git branch: 'master', url: 'https://github.com/EmmanuelMuchiri/poc-cicd-source-repo.git'
+                git branch: 'test_wso2_mi_ci_cd', url: 'https://github.com/EmmanuelMuchiri/poc-cicd-source-repo.git'
             }
         }
 
-        stage('Login to API Manager') {
+        stage('Build CAR File') {
             steps {
-                sh """
-                echo "===== Logging into API Manager ====="
-                ${APICTL_PATH} login ${APIM_ENV} -u ${APIM_USER} -p ${APIM_PASS} --insecure
-                """
+                sh '''
+                echo "===== Building CAR file ====="
+                mvn clean install
+                '''
             }
         }
 
-        stage('Deploy API') {
+        stage('Stop Micro Integrator') {
             steps {
-                sh """
-                echo "===== Deploying API ====="
-                ${APICTL_PATH} import api \\
-                    -f PetstoreAPI \\
-                    --environment ${APIM_ENV} \\
-                    --update \\
-                    --preserve-provider \\
-                    --insecure
-                """
+                sh '''
+                echo "===== Stopping Micro Integrator ====="
+                pkill -f micro-integrator || echo "Micro Integrator not running"
+                sleep 5
+                '''
+            }
+        }
+
+        stage('Deploy CAR File') {
+            steps {
+                sh '''
+                echo "===== Deploying CAR file ====="
+                
+                # Find the newly built .car file
+                CAR_FILE=$(find . -name "*.car" | head -n 1)
+                echo "CAR File to deploy: $CAR_FILE"
+
+                if [ -f "$CAR_FILE" ]; then
+                    echo "Removing old CAR files..."
+                    rm -f ${CAR_DEPLOY_DIR}/*.car
+
+                    echo "Copying new CAR file to deployment directory..."
+                    cp "$CAR_FILE" ${CAR_DEPLOY_DIR}/
+                else
+                    echo "CAR file not found! Failing pipeline."
+                    exit 1
+                fi
+                '''
+            }
+        }
+
+        stage('Start Micro Integrator') {
+            steps {
+                sh '''
+                echo "===== Starting Micro Integrator ====="
+                nohup ${MI_START_SCRIPT} &>/dev/null &
+                sleep 10
+                echo "Micro Integrator started."
+                '''
             }
         }
     }
 
     post {
         success {
-            echo "✅ Pipeline executed successfully."
+            echo "✅ Micro Integrator deployment completed successfully."
         }
         failure {
-            echo "❌ Pipeline failed. Check logs for details."
+            echo "❌ Deployment failed. Please check logs for details."
         }
     }
 }
